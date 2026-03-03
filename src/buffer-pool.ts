@@ -7,20 +7,20 @@ const PAGE_SIZE = 4096;
  * Acquired buffers are always zeroed before returning.
  */
 export class BufferPool {
-  private pool: Uint8Array[] = [];
+	private pool: Uint8Array[] = [];
 
-  /** Get a zeroed 4KB buffer - from pool or newly allocated. */
-  acquire(): Uint8Array {
-    const buf = this.pool.pop();
-    if (buf !== undefined) {
-      buf.fill(0); // ~200ns for 4KB - faster than new ArrayBuffer + GC
-      return buf;
-    }
-    return new Uint8Array(PAGE_SIZE); // new = already zeroed by runtime
-  }
+	/** Get a zeroed 4KB buffer - from pool or newly allocated. */
+	acquire(): Uint8Array {
+		const buf = this.pool.pop();
+		if (buf !== undefined) {
+			buf.fill(0); // ~200ns for 4KB - faster than new ArrayBuffer + GC
+			return buf;
+		}
+		return new Uint8Array(PAGE_SIZE); // new = already zeroed by runtime
+	}
 
-  /** Return buffer to pool for reuse. */
-  release(buf: Uint8Array): void {
-    this.pool.push(buf);
-  }
+	/** Return buffer to pool for reuse. */
+	release(buf: Uint8Array): void {
+		this.pool.push(buf);
+	}
 }

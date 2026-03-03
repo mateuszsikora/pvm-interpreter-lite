@@ -5,12 +5,15 @@
   "main": "src/index.ts",
   "scripts": {
     "test": "tsx --test $(find src -name '*.test.ts')",
-    "build": "tsc"
+    "build": "tsc",
+    "qa": "biome check src",
+    "qa-fix": "biome check --write src"
   },
   "dependencies": {
     "@typeberry/lib": "latest"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.4.5",
     "@tsconfig/node20": "^20.1.4",
     "@types/node": "^25.3.3",
     "tsx": "^4.19.0",

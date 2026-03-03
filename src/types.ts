@@ -19,16 +19,16 @@ export const EXIT_HOST = 0x1000003; // maps to Status.HOST (3)
  * Pre-allocated once, zero allocations in the hot loop.
  */
 export type InterpreterContext = {
-  readonly regs: Registers;
-  readonly mem: Memory;
-  blocks: Uint8Array;
-  jumpTable: Uint32Array;
-  jumpTableSize: number;
-  // ---- side-channel output from handlers (set ONLY at exit) ----
-  exitParam: number; // HOST: host call index, FAULT: fault address
-  nextPc: number; // HOST: PC after ECALLI (for resume)
-  // ---- pre-allocated buffer for load/store (8 bytes max) ----
-  readonly regBuf: Uint8Array;
+	readonly regs: Registers;
+	readonly mem: Memory;
+	blocks: Uint8Array;
+	jumpTable: Uint32Array;
+	jumpTableSize: number;
+	// ---- side-channel output from handlers (set ONLY at exit) ----
+	exitParam: number; // HOST: host call index, FAULT: fault address
+	nextPc: number; // HOST: PC after ECALLI (for resume)
+	// ---- pre-allocated buffer for load/store (8 bytes max) ----
+	readonly regBuf: Uint8Array;
 };
 
 /**
@@ -40,4 +40,9 @@ export type InterpreterContext = {
  *
  * On exit, handler sets ctx.exitParam and/or ctx.nextPc as needed.
  */
-export type InstructionHandler = (ctx: InterpreterContext, pc: number, code: Uint8Array, skip: Uint8Array) => number;
+export type InstructionHandler = (
+	ctx: InterpreterContext,
+	pc: number,
+	code: Uint8Array,
+	skip: Uint8Array,
+) => number;

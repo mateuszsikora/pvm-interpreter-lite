@@ -1,4 +1,8 @@
-import { type Gas, type IGasCounter, tryAsGas } from "@typeberry/lib/pvm-interface";
+import {
+	type Gas,
+	type IGasCounter,
+	tryAsGas,
+} from "@typeberry/lib/pvm-interface";
 
 const MAX_SAFE_INTEGER_BIGINT = BigInt(Number.MAX_SAFE_INTEGER);
 
@@ -12,49 +16,49 @@ const MAX_SAFE_INTEGER_BIGINT = BigInt(Number.MAX_SAFE_INTEGER);
  * Use BigGasCounter for that case (via createGasCounter with forceBigGas).
  */
 export class FastGasCounter implements IGasCounter {
-  private counter: number;
-  initialGas: Gas;
+	private counter: number;
+	initialGas: Gas;
 
-  constructor(gas: Gas) {
-    this.initialGas = gas;
-    this.counter = Number(gas);
-  }
+	constructor(gas: Gas) {
+		this.initialGas = gas;
+		this.counter = Number(gas);
+	}
 
-  /** Old model: every instruction costs 1. Ultra-fast. */
-  subOne(): boolean {
-    return --this.counter < 0;
-  }
+	/** Old model: every instruction costs 1. Ultra-fast. */
+	subOne(): boolean {
+		return --this.counter < 0;
+	}
 
-  sub(g: Gas): boolean {
-    this.counter -= Number(g);
-    if (this.counter < 0) {
-      this.counter = 0;
-      return true;
-    }
-    return false;
-  }
+	sub(g: Gas): boolean {
+		this.counter -= Number(g);
+		if (this.counter < 0) {
+			this.counter = 0;
+			return true;
+		}
+		return false;
+	}
 
-  get(): Gas {
-    return tryAsGas(this.counter);
-  }
+	get(): Gas {
+		return tryAsGas(this.counter);
+	}
 
-  /**
-   * Reduces gas to the given value. Only allowed if the new value is <= current gas.
-   * To increase gas arbitrarily, use BigGasCounter (via createGasCounter with forceBigGas).
-   */
-  set(g: Gas): void {
-    const newValBig = BigInt(g);
-    if (newValBig > BigInt(this.counter)) {
-      throw new Error(
-        "FastGasCounter.set() cannot increase gas. Use createGasCounter with forceBigGas for debugger mode.",
-      );
-    }
-    this.counter = Number(newValBig);
-  }
+	/**
+	 * Reduces gas to the given value. Only allowed if the new value is <= current gas.
+	 * To increase gas arbitrarily, use BigGasCounter (via createGasCounter with forceBigGas).
+	 */
+	set(g: Gas): void {
+		const newValBig = BigInt(g);
+		if (newValBig > BigInt(this.counter)) {
+			throw new Error(
+				"FastGasCounter.set() cannot increase gas. Use createGasCounter with forceBigGas for debugger mode.",
+			);
+		}
+		this.counter = Number(newValBig);
+	}
 
-  used(): Gas {
-    return tryAsGas(Number(this.initialGas) - this.counter);
-  }
+	used(): Gas {
+		return tryAsGas(Number(this.initialGas) - this.counter);
+	}
 }
 
 /**
@@ -74,107 +78,107 @@ export class FastGasCounter implements IGasCounter {
  * approximately 1-2ns per instruction. Use FastGasCounter when gas fits in Number.
  */
 export class BigGasCounter implements IGasCounter {
-  private counter: number;
-  private overflow: bigint;
-  initialGas: Gas;
+	private counter: number;
+	private overflow: bigint;
+	initialGas: Gas;
 
-  constructor(gas: Gas) {
-    this.initialGas = gas;
-    const bigVal = BigInt(gas);
-    if (bigVal <= MAX_SAFE_INTEGER_BIGINT) {
-      this.counter = Number(bigVal);
-      this.overflow = 0n;
-    } else {
-      this.counter = Number.MAX_SAFE_INTEGER;
-      this.overflow = bigVal - MAX_SAFE_INTEGER_BIGINT;
-    }
-  }
+	constructor(gas: Gas) {
+		this.initialGas = gas;
+		const bigVal = BigInt(gas);
+		if (bigVal <= MAX_SAFE_INTEGER_BIGINT) {
+			this.counter = Number(bigVal);
+			this.overflow = 0n;
+		} else {
+			this.counter = Number.MAX_SAFE_INTEGER;
+			this.overflow = bigVal - MAX_SAFE_INTEGER_BIGINT;
+		}
+	}
 
-  subOne(): boolean {
-    if (--this.counter >= 0) {
-      return false;
-    }
-    // counter went below 0 - check if we can refill from overflow
-    return this.refillOrExhaust();
-  }
+	subOne(): boolean {
+		if (--this.counter >= 0) {
+			return false;
+		}
+		// counter went below 0 - check if we can refill from overflow
+		return this.refillOrExhaust();
+	}
 
-  /** Slow path: called when counter underflows. Refills from overflow or signals OOG. */
-  private refillOrExhaust(): boolean {
-    if (this.overflow > 0n) {
-      // Refill counter from overflow
-      if (this.overflow >= MAX_SAFE_INTEGER_BIGINT) {
-        this.counter = Number.MAX_SAFE_INTEGER;
-        this.overflow -= MAX_SAFE_INTEGER_BIGINT;
-      } else {
-        this.counter = Number(this.overflow);
-        this.overflow = 0n;
-      }
-      return false; // not exhausted
-    }
-    // Truly out of gas
-    this.counter = 0;
-    return true;
-  }
+	/** Slow path: called when counter underflows. Refills from overflow or signals OOG. */
+	private refillOrExhaust(): boolean {
+		if (this.overflow > 0n) {
+			// Refill counter from overflow
+			if (this.overflow >= MAX_SAFE_INTEGER_BIGINT) {
+				this.counter = Number.MAX_SAFE_INTEGER;
+				this.overflow -= MAX_SAFE_INTEGER_BIGINT;
+			} else {
+				this.counter = Number(this.overflow);
+				this.overflow = 0n;
+			}
+			return false; // not exhausted
+		}
+		// Truly out of gas
+		this.counter = 0;
+		return true;
+	}
 
-  sub(g: Gas): boolean {
-    const bigCost = BigInt(g);
-    if (bigCost <= MAX_SAFE_INTEGER_BIGINT) {
-      const cost = Number(bigCost);
-      this.counter -= cost;
-      if (this.counter >= 0) {
-        return false;
-      }
-      // Counter went negative - deficit is |counter|
-      const deficit = -this.counter;
-      this.counter = 0;
-      if (this.overflow > 0n) {
-        const bigDeficit = BigInt(deficit);
-        if (this.overflow >= bigDeficit) {
-          this.overflow -= bigDeficit;
-          return false;
-        }
-      }
-      return true;
-    }
-    // Cost is larger than MAX_SAFE_INTEGER - full BigInt path
-    const total = BigInt(this.counter) + this.overflow;
-    if (total < bigCost) {
-      this.counter = 0;
-      this.overflow = 0n;
-      return true;
-    }
-    const remaining = total - bigCost;
-    if (remaining <= MAX_SAFE_INTEGER_BIGINT) {
-      this.counter = Number(remaining);
-      this.overflow = 0n;
-    } else {
-      this.counter = Number.MAX_SAFE_INTEGER;
-      this.overflow = remaining - MAX_SAFE_INTEGER_BIGINT;
-    }
-    return false;
-  }
+	sub(g: Gas): boolean {
+		const bigCost = BigInt(g);
+		if (bigCost <= MAX_SAFE_INTEGER_BIGINT) {
+			const cost = Number(bigCost);
+			this.counter -= cost;
+			if (this.counter >= 0) {
+				return false;
+			}
+			// Counter went negative - deficit is |counter|
+			const deficit = -this.counter;
+			this.counter = 0;
+			if (this.overflow > 0n) {
+				const bigDeficit = BigInt(deficit);
+				if (this.overflow >= bigDeficit) {
+					this.overflow -= bigDeficit;
+					return false;
+				}
+			}
+			return true;
+		}
+		// Cost is larger than MAX_SAFE_INTEGER - full BigInt path
+		const total = BigInt(this.counter) + this.overflow;
+		if (total < bigCost) {
+			this.counter = 0;
+			this.overflow = 0n;
+			return true;
+		}
+		const remaining = total - bigCost;
+		if (remaining <= MAX_SAFE_INTEGER_BIGINT) {
+			this.counter = Number(remaining);
+			this.overflow = 0n;
+		} else {
+			this.counter = Number.MAX_SAFE_INTEGER;
+			this.overflow = remaining - MAX_SAFE_INTEGER_BIGINT;
+		}
+		return false;
+	}
 
-  get(): Gas {
-    const total = BigInt(this.counter) + this.overflow;
-    return tryAsGas(total);
-  }
+	get(): Gas {
+		const total = BigInt(this.counter) + this.overflow;
+		return tryAsGas(total);
+	}
 
-  set(g: Gas): void {
-    const bigVal = BigInt(g);
-    if (bigVal <= MAX_SAFE_INTEGER_BIGINT) {
-      this.counter = Number(bigVal);
-      this.overflow = 0n;
-    } else {
-      this.counter = Number.MAX_SAFE_INTEGER;
-      this.overflow = bigVal - MAX_SAFE_INTEGER_BIGINT;
-    }
-  }
+	set(g: Gas): void {
+		const bigVal = BigInt(g);
+		if (bigVal <= MAX_SAFE_INTEGER_BIGINT) {
+			this.counter = Number(bigVal);
+			this.overflow = 0n;
+		} else {
+			this.counter = Number.MAX_SAFE_INTEGER;
+			this.overflow = bigVal - MAX_SAFE_INTEGER_BIGINT;
+		}
+	}
 
-  used(): Gas {
-    const remaining = BigInt(this.counter) + this.overflow;
-    const initial = BigInt(this.initialGas);
-    return tryAsGas(initial - remaining);
-  }
+	used(): Gas {
+		const remaining = BigInt(this.counter) + this.overflow;
+		const initial = BigInt(this.initialGas);
+		return tryAsGas(initial - remaining);
+	}
 }
 
 /**
@@ -185,9 +189,12 @@ export class BigGasCounter implements IGasCounter {
  * @param forceBigGas - Force BigGasCounter regardless of gas value. Required for debugger
  *   mode where gas.set() may be called with arbitrary values at runtime.
  */
-export function createGasCounter(gas: Gas, forceBigGas = false): IGasCounter & { subOne(): boolean } {
-  if (!forceBigGas && BigInt(gas) <= MAX_SAFE_INTEGER_BIGINT) {
-    return new FastGasCounter(gas);
-  }
-  return new BigGasCounter(gas);
+export function createGasCounter(
+	gas: Gas,
+	forceBigGas = false,
+): IGasCounter & { subOne(): boolean } {
+	if (!forceBigGas && BigInt(gas) <= MAX_SAFE_INTEGER_BIGINT) {
+		return new FastGasCounter(gas);
+	}
+	return new BigGasCounter(gas);
 }

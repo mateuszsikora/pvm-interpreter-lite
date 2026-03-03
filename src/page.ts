@@ -3,8 +3,8 @@
  * Bit 1 = readable, Bit 2 = writable.
  */
 export enum PageAccess {
-  READ = 1,
-  READ_WRITE = 3,
+	READ = 1,
+	READ_WRITE = 3,
 }
 
 /**
@@ -17,8 +17,8 @@ export enum PageAccess {
  * - WriteablePage: data = Uint8Array from BufferPool, access = READ_WRITE
  */
 export class Page {
-  constructor(
-    public readonly data: Uint8Array,
-    public readonly access: PageAccess,
-  ) {}
+	constructor(
+		public readonly data: Uint8Array,
+		public readonly access: PageAccess,
+	) {}
 }
