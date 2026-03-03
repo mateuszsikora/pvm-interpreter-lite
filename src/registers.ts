@@ -1,8 +1,7 @@
-import {
-	type IRegisters,
-	NO_OF_REGISTERS,
-	REGISTER_BYTE_SIZE,
-} from "@typeberry/lib/pvm-interface";
+import type { IRegisters } from "@typeberry/lib/pvm-interface";
+
+const NO_OF_REGISTERS = 13;
+const REGISTER_BYTE_SIZE = 8;
 
 const TOTAL_BYTES = NO_OF_REGISTERS * REGISTER_BYTE_SIZE; // 13 * 8 = 104
 

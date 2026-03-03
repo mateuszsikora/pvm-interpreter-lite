@@ -1,9 +1,8 @@
 import { tryAsU32, type U32 } from "@typeberry/lib/numbers";
-import {
-	type IMemory,
-	MAX_MEMORY_INDEX,
-	type PageFault,
-} from "@typeberry/lib/pvm-interface";
+import type { IMemory, PageFault } from "@typeberry/lib/pvm-interface";
+
+const MAX_MEMORY_INDEX = 0xffffffff;
+
 import { OK, Result } from "@typeberry/lib/utils";
 import { BufferPool } from "./buffer-pool.js";
 import { Page, PageAccess } from "./page.js";
