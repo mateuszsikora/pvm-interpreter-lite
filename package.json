@@ -2,15 +2,23 @@
   "name": "pvm-interpreter-lite",
   "version": "0.1.0",
   "type": "module",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
   "scripts": {
     "test": "tsx --test $(find src -name '*.test.ts')",
     "build": "tsc",
     "qa": "biome check src",
     "qa-fix": "biome check --write src"
   },
-  "dependencies": {
-    "@typeberry/lib": "latest"
+  "peerDependencies": {
+    "@typeberry/lib": "*"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.5",
