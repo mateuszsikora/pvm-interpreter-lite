@@ -1,6 +1,6 @@
 {
-  "name": "pvm-interpreter-lite",
-  "version": "0.1.0",
+  "name": "@fluffylabs/pvm-interpreter-lite",
+  "version": "0.0.0",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -21,6 +21,7 @@
     "@typeberry/lib": "*"
   },
   "devDependencies": {
+    "@typeberry/lib": "latest",
     "@biomejs/biome": "2.4.5",
     "@tsconfig/node20": "^20.1.4",
     "@types/node": "^25.3.3",
