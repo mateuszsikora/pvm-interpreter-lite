@@ -1,0 +1,19 @@
+{
+  "name": "pvm-interpreter-lite",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "tsx --test $(find src -name '*.test.ts')",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@typeberry/lib": "latest"
+  },
+  "devDependencies": {
+    "@tsconfig/node20": "^20.1.4",
+    "@types/node": "^25.3.3",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
