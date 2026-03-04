@@ -39,7 +39,7 @@ export class FastGasCounter implements IGasCounter {
 	}
 
 	get(): Gas {
-		return tryAsGas(this.counter);
+		return tryAsGas(this.counter < 0 ? 0 : this.counter);
 	}
 
 	/**

@@ -17,6 +17,13 @@ describe("FastGasCounter", () => {
 		assert.equal(gc.subOne(), true);
 	});
 
+	it("get: returns 0 after OOG", () => {
+		const gc = new FastGasCounter(tryAsGas(1));
+		gc.subOne();
+		gc.subOne(); // OOG
+		assert.equal(Number(gc.get()), 0);
+	});
+
 	it("subOne: gas=1 -> one step then OOG", () => {
 		const gc = new FastGasCounter(tryAsGas(1));
 		assert.equal(gc.subOne(), false);
