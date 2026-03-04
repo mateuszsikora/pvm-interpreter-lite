@@ -116,6 +116,15 @@ function compareInterpreters(
 	const liteParam = liteInterpreter.getExitParam();
 	assert.equal(liteParam, oldParam, `${label}: exitParam mismatch`);
 
+	// Compare gas consumed
+	const oldGasUsed = BigInt(oldInterpreter.gas.used());
+	const liteGasUsed = BigInt(liteInterpreter.gas.used());
+	assert.equal(
+		liteGasUsed,
+		oldGasUsed,
+		`${label}: gas used mismatch (old=${oldGasUsed}, lite=${liteGasUsed})`,
+	);
+
 	// Compare memory: use getDirtyPages to get only allocated pages
 	const PAGE_SIZE = 4096;
 	const oldPages = new Set(oldInterpreter.memory.getDirtyPages());
@@ -2854,6 +2863,1389 @@ describe("pvm-interpreter-lite vs pvm-interpreter", () => {
 			const { code, mask } = twoRegProgram(Instruction.MOVE_REG, 0, 12);
 			compareInterpreters("MOVE neg", buildProgram(code, mask), 100, (r) =>
 				setReg(r, 0, -1n),
+			);
+		});
+	});
+
+	// ===== SAME-REGISTER ALIASING (ra == rb == rd) =====
+
+	describe("same-register aliasing", () => {
+		it("ADD_32: ra=rb=rd=0 (5+5=10)", () => {
+			const { code, mask } = threeRegProgram(Instruction.ADD_32, 0, 0, 0);
+			compareInterpreters("ADD_32 alias", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 5n),
+			);
+		});
+		it("SUB_32: ra=rb=rd=0 (5-5=0)", () => {
+			const { code, mask } = threeRegProgram(Instruction.SUB_32, 0, 0, 0);
+			compareInterpreters("SUB_32 alias", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 5n),
+			);
+		});
+		it("MUL_32: ra=rb=rd=0 (5*5=25)", () => {
+			const { code, mask } = threeRegProgram(Instruction.MUL_32, 0, 0, 0);
+			compareInterpreters("MUL_32 alias", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 5n),
+			);
+		});
+		it("AND: ra=rb=rd=0 (0xFF & 0xFF = 0xFF)", () => {
+			const { code, mask } = threeRegProgram(Instruction.AND, 0, 0, 0);
+			compareInterpreters("AND alias", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 0xffn),
+			);
+		});
+		it("XOR: ra=rb=rd=0 (0xFF ^ 0xFF = 0)", () => {
+			const { code, mask } = threeRegProgram(Instruction.XOR, 0, 0, 0);
+			compareInterpreters("XOR alias", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 0xffn),
+			);
+		});
+		it("OR: ra=rb=rd=0 (0xFF | 0xFF = 0xFF)", () => {
+			const { code, mask } = threeRegProgram(Instruction.OR, 0, 0, 0);
+			compareInterpreters("OR alias", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 0xffn),
+			);
+		});
+		it("ADD_64: ra=rb=rd=0 (large value)", () => {
+			const { code, mask } = threeRegProgram(Instruction.ADD_64, 0, 0, 0);
+			compareInterpreters("ADD_64 alias", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 0x8000000000000001n),
+			);
+		});
+		it("DIV_U_32: ra=rb=rd=0 (7/7=1)", () => {
+			const { code, mask } = threeRegProgram(Instruction.DIV_U_32, 0, 0, 0);
+			compareInterpreters(
+				"DIV_U_32 alias",
+				buildProgram(code, mask),
+				100,
+				(r) => setReg(r, 0, 7n),
+			);
+		});
+		it("DIV_U_64: ra=rb=rd=0 (7/7=1)", () => {
+			const { code, mask } = threeRegProgram(Instruction.DIV_U_64, 0, 0, 0);
+			compareInterpreters(
+				"DIV_U_64 alias",
+				buildProgram(code, mask),
+				100,
+				(r) => setReg(r, 0, 7n),
+			);
+		});
+		it("SHLO_L_32: ra=rb=rd=0 (3 << 3 = 24)", () => {
+			const { code, mask } = threeRegProgram(Instruction.SHLO_L_32, 0, 0, 0);
+			compareInterpreters("SLL32 alias", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 3n),
+			);
+		});
+		it("SET_LT_U: ra=rb=rd=0 (5 < 5 = 0)", () => {
+			const { code, mask } = threeRegProgram(Instruction.SET_LT_U, 0, 0, 0);
+			compareInterpreters("SLT_U alias", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 5n),
+			);
+		});
+		it("CMOV_IZ: ra=rb=rd=0 with zero (moves)", () => {
+			const { code, mask } = threeRegProgram(Instruction.CMOV_IZ, 0, 0, 0);
+			compareInterpreters(
+				"CMOV_IZ alias0",
+				buildProgram(code, mask),
+				100,
+				(r) => setReg(r, 0, 0n),
+			);
+		});
+		it("CMOV_IZ: ra=rb=rd=0 with nonzero (no move)", () => {
+			const { code, mask } = threeRegProgram(Instruction.CMOV_IZ, 0, 0, 0);
+			compareInterpreters(
+				"CMOV_IZ alias1",
+				buildProgram(code, mask),
+				100,
+				(r) => setReg(r, 0, 5n),
+			);
+		});
+		it("CMOV_NZ: ra=rb=rd=0 with nonzero (moves)", () => {
+			const { code, mask } = threeRegProgram(Instruction.CMOV_NZ, 0, 0, 0);
+			compareInterpreters(
+				"CMOV_NZ alias1",
+				buildProgram(code, mask),
+				100,
+				(r) => setReg(r, 0, 5n),
+			);
+		});
+		it("REM_U_32: ra=rb=rd=0 (7%7=0)", () => {
+			const { code, mask } = threeRegProgram(Instruction.REM_U_32, 0, 0, 0);
+			compareInterpreters(
+				"REM_U_32 alias",
+				buildProgram(code, mask),
+				100,
+				(r) => setReg(r, 0, 7n),
+			);
+		});
+		it("MIN: ra=rb=rd=0 (same value)", () => {
+			const { code, mask } = threeRegProgram(Instruction.MIN, 0, 0, 0);
+			compareInterpreters("MIN alias", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 42n),
+			);
+		});
+		it("MAX: ra=rb=rd=0 (same value)", () => {
+			const { code, mask } = threeRegProgram(Instruction.MAX, 0, 0, 0);
+			compareInterpreters("MAX alias", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 42n),
+			);
+		});
+		it("ROT_L_64: ra=rb=rd=0 (value rotated by itself)", () => {
+			const { code, mask } = threeRegProgram(Instruction.ROT_L_64, 0, 0, 0);
+			compareInterpreters("RL64 alias", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 3n),
+			);
+		});
+		it("MUL_UPPER_U_U: ra=rb=rd=0 (same reg)", () => {
+			const { code, mask } = threeRegProgram(
+				Instruction.MUL_UPPER_U_U,
+				0,
+				0,
+				0,
+			);
+			compareInterpreters(
+				"MUL_UPPER_UU alias",
+				buildProgram(code, mask),
+				100,
+				(r) => setReg(r, 0, 2n ** 60n),
+			);
+		});
+	});
+
+	// ===== MUL_UPPER CORNER CASES =====
+
+	describe("mul upper corner cases", () => {
+		it("MUL_UPPER_U_U: small * small = 0 upper", () =>
+			testThreeReg("MUL_UU small", Instruction.MUL_UPPER_U_U, 5n, 6n));
+		it("MUL_UPPER_U_U: neg*pos (as unsigned)", () =>
+			testThreeReg("MUL_UU negpos", Instruction.MUL_UPPER_U_U, -5n, 6n));
+		it("MUL_UPPER_U_U: pos*neg (as unsigned)", () =>
+			testThreeReg("MUL_UU posneg", Instruction.MUL_UPPER_U_U, 5n, -6n));
+		it("MUL_UPPER_U_U: neg*neg (as unsigned)", () =>
+			testThreeReg("MUL_UU negneg", Instruction.MUL_UPPER_U_U, -5n, -6n));
+		it("MUL_UPPER_U_U: MAX_I64 * MAX_I64", () =>
+			testThreeReg(
+				"MUL_UU maxI64",
+				Instruction.MUL_UPPER_U_U,
+				0x7fffffffffffffffn,
+				0x7fffffffffffffffn,
+			));
+		it("MUL_UPPER_U_U: 0 * large", () =>
+			testThreeReg(
+				"MUL_UU zero",
+				Instruction.MUL_UPPER_U_U,
+				0n,
+				0xffffffffffffffffn,
+			));
+		it("MUL_UPPER_U_U: 1 * max", () =>
+			testThreeReg(
+				"MUL_UU one",
+				Instruction.MUL_UPPER_U_U,
+				1n,
+				0xffffffffffffffffn,
+			));
+
+		it("MUL_UPPER_S_S: small pos*pos = 0 upper", () =>
+			testThreeReg("MUL_SS small", Instruction.MUL_UPPER_S_S, 5n, 6n));
+		it("MUL_UPPER_S_S: neg*pos = -1 upper", () =>
+			testThreeReg("MUL_SS negpos", Instruction.MUL_UPPER_S_S, -5n, 6n));
+		it("MUL_UPPER_S_S: pos*neg = -1 upper", () =>
+			testThreeReg("MUL_SS posneg", Instruction.MUL_UPPER_S_S, 5n, -6n));
+		it("MUL_UPPER_S_S: neg*neg = 0 upper", () =>
+			testThreeReg("MUL_SS negneg", Instruction.MUL_UPPER_S_S, -5n, -6n));
+		it("MUL_UPPER_S_S: 0 * neg", () =>
+			testThreeReg("MUL_SS zero", Instruction.MUL_UPPER_S_S, 0n, -5n));
+		it("MUL_UPPER_S_S: MIN_I64 * -1", () =>
+			testThreeReg(
+				"MUL_SS min-1",
+				Instruction.MUL_UPPER_S_S,
+				-(2n ** 63n),
+				-1n,
+			));
+		it("MUL_UPPER_S_S: MIN_I64 * MIN_I64", () =>
+			testThreeReg(
+				"MUL_SS minmin",
+				Instruction.MUL_UPPER_S_S,
+				-(2n ** 63n),
+				-(2n ** 63n),
+			));
+
+		it("MUL_UPPER_S_U: small pos*pos = 0 upper", () =>
+			testThreeReg("MUL_SU small", Instruction.MUL_UPPER_S_U, 5n, 6n));
+		it("MUL_UPPER_S_U: neg*pos = -1 upper", () =>
+			testThreeReg("MUL_SU negpos2", Instruction.MUL_UPPER_S_U, -5n, 6n));
+		it("MUL_UPPER_S_U: pos*neg(unsigned) = 4 upper", () =>
+			testThreeReg("MUL_SU posneg2", Instruction.MUL_UPPER_S_U, 5n, -6n));
+		it("MUL_UPPER_S_U: neg*neg(unsigned)", () =>
+			testThreeReg("MUL_SU negneg2", Instruction.MUL_UPPER_S_U, -5n, -6n));
+		it("MUL_UPPER_S_U: 0 * max", () =>
+			testThreeReg(
+				"MUL_SU zero",
+				Instruction.MUL_UPPER_S_U,
+				0n,
+				0xffffffffffffffffn,
+			));
+		it("MUL_UPPER_S_U: -1 * max", () =>
+			testThreeReg(
+				"MUL_SU neg1max",
+				Instruction.MUL_UPPER_S_U,
+				-1n,
+				0xffffffffffffffffn,
+			));
+	});
+
+	// ===== BRANCH EQUAL VALUES (boundary) =====
+
+	describe("branch boundary: equal values", () => {
+		it("BRANCH_LT_U: not taken (6 < 6 = false)", () => {
+			const code = [
+				Instruction.BRANCH_LT_U,
+				0x10,
+				4,
+				Instruction.TRAP,
+				Instruction.TRAP,
+			];
+			const mask = [true, false, false, true, true];
+			compareInterpreters("BR_LT_U eq", buildProgram(code, mask), 100, (r) => {
+				setReg(r, 0, 6n);
+				setReg(r, 1, 6n);
+			});
+		});
+		it("BRANCH_GE_U: taken (5 >= 5)", () => {
+			const code = [
+				Instruction.BRANCH_GE_U,
+				0x10,
+				4,
+				Instruction.TRAP,
+				Instruction.TRAP,
+			];
+			const mask = [true, false, false, true, true];
+			compareInterpreters("BR_GE_U eq", buildProgram(code, mask), 100, (r) => {
+				setReg(r, 0, 5n);
+				setReg(r, 1, 5n);
+			});
+		});
+		it("BRANCH_LT_S: not taken (-6 < -6 = false)", () => {
+			const code = [
+				Instruction.BRANCH_LT_S,
+				0x10,
+				4,
+				Instruction.TRAP,
+				Instruction.TRAP,
+			];
+			const mask = [true, false, false, true, true];
+			compareInterpreters("BR_LT_S eq", buildProgram(code, mask), 100, (r) => {
+				setReg(r, 0, -6n);
+				setReg(r, 1, -6n);
+			});
+		});
+		it("BRANCH_GE_S: taken (-5 >= -5)", () => {
+			const code = [
+				Instruction.BRANCH_GE_S,
+				0x10,
+				4,
+				Instruction.TRAP,
+				Instruction.TRAP,
+			];
+			const mask = [true, false, false, true, true];
+			compareInterpreters("BR_GE_S eq", buildProgram(code, mask), 100, (r) => {
+				setReg(r, 0, -5n);
+				setReg(r, 1, -5n);
+			});
+		});
+	});
+
+	// ===== BRANCH IMM NOT-TAKEN CASES =====
+
+	describe("branch imm not-taken", () => {
+		it("BRANCH_GE_U_IMM: not taken (3 >= 10 = false)", () => {
+			const code = [
+				Instruction.BRANCH_GE_U_IMM,
+				0x00,
+				10,
+				5,
+				Instruction.TRAP,
+				Instruction.TRAP,
+			];
+			const mask = [true, false, false, false, true, true];
+			compareInterpreters(
+				"BR_GE_U_IMM ntaken",
+				buildProgram(code, mask),
+				100,
+				(r) => setReg(r, 0, 3n),
+			);
+		});
+		it("BRANCH_LE_U_IMM: not taken (10 <= 5 = false)", () => {
+			const code = [
+				Instruction.BRANCH_LE_U_IMM,
+				0x00,
+				5,
+				5,
+				Instruction.TRAP,
+				Instruction.TRAP,
+			];
+			const mask = [true, false, false, false, true, true];
+			compareInterpreters(
+				"BR_LE_U_IMM ntaken",
+				buildProgram(code, mask),
+				100,
+				(r) => setReg(r, 0, 10n),
+			);
+		});
+		it("BRANCH_GT_U_IMM: not taken (5 > 5 = false)", () => {
+			const code = [
+				Instruction.BRANCH_GT_U_IMM,
+				0x00,
+				5,
+				5,
+				Instruction.TRAP,
+				Instruction.TRAP,
+			];
+			const mask = [true, false, false, false, true, true];
+			compareInterpreters(
+				"BR_GT_U_IMM ntaken",
+				buildProgram(code, mask),
+				100,
+				(r) => setReg(r, 0, 5n),
+			);
+		});
+		it("BRANCH_LT_S_IMM: not taken (-5 < -5 = false)", () => {
+			const code = [
+				Instruction.BRANCH_LT_S_IMM,
+				0x00,
+				0xfb, // -5
+				5,
+				Instruction.TRAP,
+				Instruction.TRAP,
+			];
+			const mask = [true, false, false, false, true, true];
+			compareInterpreters(
+				"BR_LT_S_IMM ntaken",
+				buildProgram(code, mask),
+				100,
+				(r) => setReg(r, 0, -5n),
+			);
+		});
+		it("BRANCH_GE_S_IMM: not taken (-6 >= -5 = false)", () => {
+			const code = [
+				Instruction.BRANCH_GE_S_IMM,
+				0x00,
+				0xfb, // -5
+				5,
+				Instruction.TRAP,
+				Instruction.TRAP,
+			];
+			const mask = [true, false, false, false, true, true];
+			compareInterpreters(
+				"BR_GE_S_IMM ntaken",
+				buildProgram(code, mask),
+				100,
+				(r) => setReg(r, 0, -6n),
+			);
+		});
+		it("BRANCH_LE_S_IMM: not taken (-5 <= -6 = false)", () => {
+			const code = [
+				Instruction.BRANCH_LE_S_IMM,
+				0x00,
+				0xfa, // -6
+				5,
+				Instruction.TRAP,
+				Instruction.TRAP,
+			];
+			const mask = [true, false, false, false, true, true];
+			compareInterpreters(
+				"BR_LE_S_IMM ntaken",
+				buildProgram(code, mask),
+				100,
+				(r) => setReg(r, 0, -5n),
+			);
+		});
+		it("BRANCH_GT_S_IMM: not taken (-6 > -6 = false)", () => {
+			const code = [
+				Instruction.BRANCH_GT_S_IMM,
+				0x00,
+				0xfa, // -6
+				5,
+				Instruction.TRAP,
+				Instruction.TRAP,
+			];
+			const mask = [true, false, false, false, true, true];
+			compareInterpreters(
+				"BR_GT_S_IMM ntaken",
+				buildProgram(code, mask),
+				100,
+				(r) => setReg(r, 0, -6n),
+			);
+		});
+		it("BRANCH_LT_U_IMM: equal values not taken (5 < 5 = false)", () => {
+			const code = [
+				Instruction.BRANCH_LT_U_IMM,
+				0x00,
+				5,
+				5,
+				Instruction.TRAP,
+				Instruction.TRAP,
+			];
+			const mask = [true, false, false, false, true, true];
+			compareInterpreters(
+				"BR_LT_U_IMM eq",
+				buildProgram(code, mask),
+				100,
+				(r) => setReg(r, 0, 5n),
+			);
+		});
+		it("BRANCH_LE_U_IMM: equal values taken (5 <= 5 = true)", () => {
+			const code = [
+				Instruction.BRANCH_LE_U_IMM,
+				0x00,
+				5,
+				5,
+				Instruction.TRAP,
+				Instruction.TRAP,
+			];
+			const mask = [true, false, false, false, true, true];
+			compareInterpreters(
+				"BR_LE_U_IMM eq",
+				buildProgram(code, mask),
+				100,
+				(r) => setReg(r, 0, 5n),
+			);
+		});
+		it("BRANCH_GE_U_IMM: equal values taken (5 >= 5 = true)", () => {
+			const code = [
+				Instruction.BRANCH_GE_U_IMM,
+				0x00,
+				5,
+				5,
+				Instruction.TRAP,
+				Instruction.TRAP,
+			];
+			const mask = [true, false, false, false, true, true];
+			compareInterpreters(
+				"BR_GE_U_IMM eq",
+				buildProgram(code, mask),
+				100,
+				(r) => setReg(r, 0, 5n),
+			);
+		});
+	});
+
+	// ===== MEMORY: SIGNED LOADS =====
+
+	describe("signed loads round-trip", () => {
+		it("STORE_IND_U8 + LOAD_IND_I8: sign extend 0xCC => -52", () => {
+			const imm4096 = immLE(4096, 4);
+			const testVal = immLE(0xcc, 4);
+			const code = [
+				Instruction.LOAD_IMM,
+				0x00,
+				...imm4096,
+				Instruction.SBRK,
+				0x01,
+				Instruction.LOAD_IMM,
+				0x02,
+				...testVal,
+				Instruction.STORE_IND_U8,
+				0x12,
+				0x00,
+				Instruction.LOAD_IND_I8,
+				0x13,
+				0x00,
+				Instruction.TRAP,
+			];
+			const mask = [
+				true,
+				...Array(1 + imm4096.length).fill(false),
+				true,
+				false,
+				true,
+				...Array(1 + testVal.length).fill(false),
+				true,
+				false,
+				false,
+				true,
+				false,
+				false,
+				true,
+			];
+			compareInterpreters("load_i8 sign extend", buildProgram(code, mask), 200);
+		});
+
+		it("STORE_IND_U16 + LOAD_IND_I16: sign extend 0xDDCC => -8756", () => {
+			const imm4096 = immLE(4096, 4);
+			const testVal = immLE(0xddcc, 4);
+			const code = [
+				Instruction.LOAD_IMM,
+				0x00,
+				...imm4096,
+				Instruction.SBRK,
+				0x01,
+				Instruction.LOAD_IMM,
+				0x02,
+				...testVal,
+				Instruction.STORE_IND_U16,
+				0x12,
+				0x00,
+				Instruction.LOAD_IND_I16,
+				0x13,
+				0x00,
+				Instruction.TRAP,
+			];
+			const mask = [
+				true,
+				...Array(1 + imm4096.length).fill(false),
+				true,
+				false,
+				true,
+				...Array(1 + testVal.length).fill(false),
+				true,
+				false,
+				false,
+				true,
+				false,
+				false,
+				true,
+			];
+			compareInterpreters(
+				"load_i16 sign extend",
+				buildProgram(code, mask),
+				200,
+			);
+		});
+
+		it("STORE_IND_U32 + LOAD_IND_I32: sign extend 0xFFFFDDCC", () => {
+			const imm4096 = immLE(4096, 4);
+			const testVal = immLE(0xffffddcc | 0, 4);
+			const code = [
+				Instruction.LOAD_IMM,
+				0x00,
+				...imm4096,
+				Instruction.SBRK,
+				0x01,
+				Instruction.LOAD_IMM,
+				0x02,
+				...testVal,
+				Instruction.STORE_IND_U32,
+				0x12,
+				0x00,
+				Instruction.LOAD_IND_I32,
+				0x13,
+				0x00,
+				Instruction.TRAP,
+			];
+			const mask = [
+				true,
+				...Array(1 + imm4096.length).fill(false),
+				true,
+				false,
+				true,
+				...Array(1 + testVal.length).fill(false),
+				true,
+				false,
+				false,
+				true,
+				false,
+				false,
+				true,
+			];
+			compareInterpreters(
+				"load_i32 sign extend",
+				buildProgram(code, mask),
+				200,
+			);
+		});
+
+		it("STORE_IND_U8 + LOAD_IND_U8: positive byte stays unsigned", () => {
+			const imm4096 = immLE(4096, 4);
+			const testVal = immLE(0x70, 4);
+			const code = [
+				Instruction.LOAD_IMM,
+				0x00,
+				...imm4096,
+				Instruction.SBRK,
+				0x01,
+				Instruction.LOAD_IMM,
+				0x02,
+				...testVal,
+				Instruction.STORE_IND_U8,
+				0x12,
+				0x00,
+				Instruction.LOAD_IND_U8,
+				0x13,
+				0x00,
+				Instruction.TRAP,
+			];
+			const mask = [
+				true,
+				...Array(1 + imm4096.length).fill(false),
+				true,
+				false,
+				true,
+				...Array(1 + testVal.length).fill(false),
+				true,
+				false,
+				false,
+				true,
+				false,
+				false,
+				true,
+			];
+			compareInterpreters("load_u8 positive", buildProgram(code, mask), 200);
+		});
+	});
+
+	// ===== STORE_IND_U16 ROUND-TRIP =====
+
+	describe("store/load u16 round-trip", () => {
+		it("STORE_IND_U16 + LOAD_IND_U16: store and load 16-bit", () => {
+			const imm4096 = immLE(4096, 4);
+			const testVal = immLE(0xba98, 4);
+			const code = [
+				Instruction.LOAD_IMM,
+				0x00,
+				...imm4096,
+				Instruction.SBRK,
+				0x01,
+				Instruction.LOAD_IMM,
+				0x02,
+				...testVal,
+				Instruction.STORE_IND_U16,
+				0x12,
+				0x00,
+				Instruction.LOAD_IND_U16,
+				0x13,
+				0x00,
+				Instruction.TRAP,
+			];
+			const mask = [
+				true,
+				...Array(1 + imm4096.length).fill(false),
+				true,
+				false,
+				true,
+				...Array(1 + testVal.length).fill(false),
+				true,
+				false,
+				false,
+				true,
+				false,
+				false,
+				true,
+			];
+			compareInterpreters("mem roundtrip u16", buildProgram(code, mask), 200);
+		});
+	});
+
+	// ===== STORE_IMM ROUND-TRIPS =====
+
+	describe("store immediate round-trips", () => {
+		it("STORE_IMM_U8 + LOAD_U8: store imm to address and load back", () => {
+			const imm4096 = immLE(4096, 4);
+			const code = [
+				// Allocate heap
+				Instruction.LOAD_IMM,
+				0x00,
+				...imm4096,
+				Instruction.SBRK,
+				0x01, // r1 = heap start
+				// STORE_IMM_U8: TWO_IMMEDIATES, byte1 low nibble=firstImmLen
+				// imm1 = address (from r1, we'll use STORE_IMM_IND instead)
+				// Actually use STORE_IMM_IND_U8: ONE_REGISTER_TWO_IMMEDIATES
+				// ra=r1(addr reg), imm1=offset(0), imm2=value(0xAB)
+				// byte1 = (immLen=1 << 4) | ra=1 = 0x11
+				Instruction.STORE_IMM_IND_U8,
+				0x11, // ra=r1, firstImmLen=1
+				0x00, // imm1=0 (offset)
+				0xab, // imm2=0xAB (value)
+				// LOAD_IND_U8: ra=r3(dest) rb=r1(addr) imm=0
+				Instruction.LOAD_IND_U8,
+				0x13,
+				0x00,
+				Instruction.TRAP,
+			];
+			const mask = [
+				true,
+				...Array(1 + imm4096.length).fill(false),
+				true,
+				false,
+				true,
+				false,
+				false,
+				false,
+				true,
+				false,
+				false,
+				true,
+			];
+			compareInterpreters("store_imm_ind_u8", buildProgram(code, mask), 200);
+		});
+
+		it("STORE_IMM_IND_U16: store 16-bit imm and load back", () => {
+			const imm4096 = immLE(4096, 4);
+			const code = [
+				Instruction.LOAD_IMM,
+				0x00,
+				...imm4096,
+				Instruction.SBRK,
+				0x01,
+				Instruction.STORE_IMM_IND_U16,
+				0x11,
+				0x00,
+				0x98, // imm2 low byte
+				Instruction.LOAD_IND_U16,
+				0x13,
+				0x00,
+				Instruction.TRAP,
+			];
+			const mask = [
+				true,
+				...Array(1 + imm4096.length).fill(false),
+				true,
+				false,
+				true,
+				false,
+				false,
+				false,
+				true,
+				false,
+				false,
+				true,
+			];
+			compareInterpreters("store_imm_ind_u16", buildProgram(code, mask), 200);
+		});
+
+		it("STORE_IMM_IND_U32: store 32-bit imm and load back", () => {
+			const imm4096 = immLE(4096, 4);
+			const code = [
+				Instruction.LOAD_IMM,
+				0x00,
+				...imm4096,
+				Instruction.SBRK,
+				0x01,
+				Instruction.STORE_IMM_IND_U32,
+				0x11,
+				0x00,
+				0x78, // imm2 low byte
+				Instruction.LOAD_IND_U32,
+				0x13,
+				0x00,
+				Instruction.TRAP,
+			];
+			const mask = [
+				true,
+				...Array(1 + imm4096.length).fill(false),
+				true,
+				false,
+				true,
+				false,
+				false,
+				false,
+				true,
+				false,
+				false,
+				true,
+			];
+			compareInterpreters("store_imm_ind_u32", buildProgram(code, mask), 200);
+		});
+
+		it("STORE_IMM_IND_U64: store 64-bit sign-extended imm and load back", () => {
+			const imm4096 = immLE(4096, 4);
+			const code = [
+				Instruction.LOAD_IMM,
+				0x00,
+				...imm4096,
+				Instruction.SBRK,
+				0x01,
+				// STORE_IMM_IND_U64: store -1 (0xFF sign-extended to 64 bits)
+				Instruction.STORE_IMM_IND_U64,
+				0x11,
+				0x00,
+				0xff, // imm2=0xFF = -1 signed
+				Instruction.LOAD_IND_U64,
+				0x13,
+				0x00,
+				Instruction.TRAP,
+			];
+			const mask = [
+				true,
+				...Array(1 + imm4096.length).fill(false),
+				true,
+				false,
+				true,
+				false,
+				false,
+				false,
+				true,
+				false,
+				false,
+				true,
+			];
+			compareInterpreters("store_imm_ind_u64", buildProgram(code, mask), 200);
+		});
+	});
+
+	// ===== ARITHMETIC BOUNDARY VALUES =====
+
+	describe("arithmetic boundary values", () => {
+		it("ADD_32: max + max = -2 (wraps)", () =>
+			testThreeReg(
+				"ADD_32 maxmax",
+				Instruction.ADD_32,
+				0xffffffffn,
+				0xffffffffn,
+			));
+		it("ADD_32: 2^31+5 + 2^31+6 = 11", () =>
+			testThreeReg(
+				"ADD_32 midpoint",
+				Instruction.ADD_32,
+				2n ** 31n + 5n,
+				2n ** 31n + 6n,
+			));
+		it("MUL_64: 2^63 * 2 = 0 (exact overflow)", () =>
+			testThreeReg("MUL_64 2pow63", Instruction.MUL_64, 2n ** 63n, 2n));
+		it("MUL_32: max * max", () =>
+			testThreeReg(
+				"MUL_32 maxmax",
+				Instruction.MUL_32,
+				0xffffffffn,
+				0xffffffffn,
+			));
+		it("DIV_U_64: large / large", () =>
+			testThreeReg(
+				"DIV_U_64 large",
+				Instruction.DIV_U_64,
+				0xffffffffffffffffn,
+				0xffffffffffffffffn,
+			));
+		it("DIV_S_64: MIN_I64 / 1", () =>
+			testThreeReg("DIV_S_64 min/1", Instruction.DIV_S_64, -(2n ** 63n), 1n));
+		it("REM_S_32: negative dividend (-25 % 3)", () =>
+			testThreeReg("REM_S_32 negdiv", Instruction.REM_S_32, -25n, 3n));
+		it("REM_S_64: negative dividend (-25 % 3)", () =>
+			testThreeReg("REM_S_64 negdiv", Instruction.REM_S_64, -25n, 3n));
+		it("REM_S_32: negative divisor (25 % -3)", () =>
+			testThreeReg("REM_S_32 negrem", Instruction.REM_S_32, 25n, -3n));
+		it("REM_S_64: negative divisor (25 % -3)", () =>
+			testThreeReg("REM_S_64 negrem", Instruction.REM_S_64, 25n, -3n));
+		it("REM_S_32: both negative (-25 % -3)", () =>
+			testThreeReg("REM_S_32 negneg", Instruction.REM_S_32, -25n, -3n));
+		it("REM_S_64: both negative (-25 % -3)", () =>
+			testThreeReg("REM_S_64 negneg", Instruction.REM_S_64, -25n, -3n));
+		it("DIV_S_32: -1 / -1 = 1", () =>
+			testThreeReg("DIV_S_32 neg1", Instruction.DIV_S_32, -1n, -1n));
+		it("DIV_S_64: -1 / -1 = 1", () =>
+			testThreeReg("DIV_S_64 neg1", Instruction.DIV_S_64, -1n, -1n));
+	});
+
+	// ===== IMMEDIATE ARITHMETIC BOUNDARY =====
+
+	describe("immediate arithmetic boundary", () => {
+		it("NEG_ADD_IMM_64: overflow (imm=12, reg=13 wraps)", () => {
+			const { code, mask } = twoRegImmProgram(
+				Instruction.NEG_ADD_IMM_64,
+				12,
+				0,
+				immLE(12, 4),
+			);
+			compareInterpreters(
+				"NEG_ADD_IMM64 ov",
+				buildProgram(code, mask),
+				100,
+				(r) => setReg(r, 0, 13n),
+			);
+		});
+		it("ADD_IMM_64: negative imm (-1 + 50 = 49)", () => {
+			const { code, mask } = twoRegImmProgram(
+				Instruction.ADD_IMM_64,
+				12,
+				0,
+				immLE(-1, 4),
+			);
+			compareInterpreters("ADD_IMM64 neg", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 50n),
+			);
+		});
+		it("MUL_IMM_32: overflow (large * large)", () => {
+			const { code, mask } = twoRegImmProgram(
+				Instruction.MUL_IMM_32,
+				12,
+				0,
+				immLE(0x10000, 4),
+			);
+			compareInterpreters("MUL_IMM32 ov", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 0x10000n),
+			);
+		});
+		it("MUL_IMM_64: large values", () => {
+			const { code, mask } = twoRegImmProgram(
+				Instruction.MUL_IMM_64,
+				12,
+				0,
+				immLE(-1, 4),
+			);
+			compareInterpreters("MUL_IMM64 neg", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 0x100000000n),
+			);
+		});
+	});
+
+	// ===== ROTATION IMM BOUNDARY CASES =====
+
+	describe("rotation imm boundary", () => {
+		it("ROT_R_64_IMM: negative number rotation", () => {
+			const { code, mask } = twoRegImmProgram(
+				Instruction.ROT_R_64_IMM,
+				12,
+				0,
+				immLE(28, 4),
+			);
+			compareInterpreters("RR64_IMM neg", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, -0x123456789abcdef0n),
+			);
+		});
+		it("ROT_R_64_IMM: full rotation (64)", () => {
+			const { code, mask } = twoRegImmProgram(
+				Instruction.ROT_R_64_IMM,
+				12,
+				0,
+				immLE(64, 4),
+			);
+			compareInterpreters("RR64_IMM full", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 0x123456789abcdef0n),
+			);
+		});
+		it("ROT_R_64_IMM: overflow (128)", () => {
+			const { code, mask } = twoRegImmProgram(
+				Instruction.ROT_R_64_IMM,
+				12,
+				0,
+				immLE(128, 4),
+			);
+			compareInterpreters("RR64_IMM ov", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 0x123456789abcdef0n),
+			);
+		});
+		it("ROT_R_32_IMM: negative number", () => {
+			const { code, mask } = twoRegImmProgram(
+				Instruction.ROT_R_32_IMM,
+				12,
+				0,
+				immLE(16, 4),
+			);
+			compareInterpreters("RR32_IMM neg", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, -0x12345678n),
+			);
+		});
+		it("ROT_R_32_IMM: no rotation", () => {
+			const { code, mask } = twoRegImmProgram(
+				Instruction.ROT_R_32_IMM,
+				12,
+				0,
+				immLE(0, 4),
+			);
+			compareInterpreters("RR32_IMM zero", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 0x12345678n),
+			);
+		});
+		it("ROT_R_32_IMM: full rotation (32)", () => {
+			const { code, mask } = twoRegImmProgram(
+				Instruction.ROT_R_32_IMM,
+				12,
+				0,
+				immLE(32, 4),
+			);
+			compareInterpreters("RR32_IMM full", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 0x12345678n),
+			);
+		});
+		it("ROT_R_32_IMM: overflow (128)", () => {
+			const { code, mask } = twoRegImmProgram(
+				Instruction.ROT_R_32_IMM,
+				12,
+				0,
+				immLE(128, 4),
+			);
+			compareInterpreters("RR32_IMM ov", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 0x12345678n),
+			);
+		});
+		it("ROT_R_64_IMM_ALT: negative number", () => {
+			const { code, mask } = twoRegImmProgram(
+				Instruction.ROT_R_64_IMM_ALT,
+				12,
+				0,
+				immLE(-0x12345678 | 0, 4),
+			);
+			compareInterpreters("RR64_ALT neg", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 28n),
+			);
+		});
+		it("ROT_R_64_IMM_ALT: zero rotation (reg=0)", () => {
+			const { code, mask } = twoRegImmProgram(
+				Instruction.ROT_R_64_IMM_ALT,
+				12,
+				0,
+				immLE(0x12345678, 4),
+			);
+			compareInterpreters("RR64_ALT zero", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 0n),
+			);
+		});
+		it("ROT_R_64_IMM_ALT: full rotation (reg=64)", () => {
+			const { code, mask } = twoRegImmProgram(
+				Instruction.ROT_R_64_IMM_ALT,
+				12,
+				0,
+				immLE(0x12345678, 4),
+			);
+			compareInterpreters("RR64_ALT full", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 64n),
+			);
+		});
+		it("ROT_R_64_IMM_ALT: overflow (reg=128)", () => {
+			const { code, mask } = twoRegImmProgram(
+				Instruction.ROT_R_64_IMM_ALT,
+				12,
+				0,
+				immLE(0x12345678, 4),
+			);
+			compareInterpreters("RR64_ALT ov", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 128n),
+			);
+		});
+		it("ROT_R_32_IMM_ALT: max value max shift", () => {
+			const { code, mask } = twoRegImmProgram(
+				Instruction.ROT_R_32_IMM_ALT,
+				12,
+				0,
+				immLE(0x7ffffffe, 4),
+			);
+			compareInterpreters(
+				"RR32_ALT maxmax",
+				buildProgram(code, mask),
+				100,
+				(r) => setReg(r, 0, 31n),
+			);
+		});
+		it("ROT_R_32_IMM_ALT: negative number", () => {
+			const { code, mask } = twoRegImmProgram(
+				Instruction.ROT_R_32_IMM_ALT,
+				12,
+				0,
+				immLE(-0x12345678 | 0, 4),
+			);
+			compareInterpreters("RR32_ALT neg", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 16n),
+			);
+		});
+		it("ROT_R_32_IMM_ALT: zero rotation (reg=0)", () => {
+			const { code, mask } = twoRegImmProgram(
+				Instruction.ROT_R_32_IMM_ALT,
+				12,
+				0,
+				immLE(0x12345678, 4),
+			);
+			compareInterpreters("RR32_ALT zero", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 0n),
+			);
+		});
+		it("ROT_R_32_IMM_ALT: full rotation (reg=32)", () => {
+			const { code, mask } = twoRegImmProgram(
+				Instruction.ROT_R_32_IMM_ALT,
+				12,
+				0,
+				immLE(0x12345678, 4),
+			);
+			compareInterpreters("RR32_ALT full", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 32n),
+			);
+		});
+		it("ROT_R_32_IMM_ALT: overflow (reg=128)", () => {
+			const { code, mask } = twoRegImmProgram(
+				Instruction.ROT_R_32_IMM_ALT,
+				12,
+				0,
+				immLE(0x12345678, 4),
+			);
+			compareInterpreters("RR32_ALT ov", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 128n),
+			);
+		});
+	});
+
+	// ===== SBRK EDGE CASES =====
+
+	describe("sbrk edge cases", () => {
+		it("SBRK: allocate 0 bytes (no-op)", () => {
+			const code = [
+				Instruction.LOAD_IMM,
+				0x00,
+				0x00,
+				Instruction.SBRK,
+				0x0c,
+				Instruction.TRAP,
+			];
+			const mask = [true, false, false, true, false, true];
+			compareInterpreters("SBRK zero", buildProgram(code, mask), 100);
+		});
+
+		it("SBRK: allocate 2 pages at once", () => {
+			const imm8192 = immLE(8192, 4);
+			const code = [
+				Instruction.LOAD_IMM,
+				0x00,
+				...imm8192,
+				Instruction.SBRK,
+				0x01,
+				Instruction.TRAP,
+			];
+			const mask = [
+				true,
+				...Array(1 + imm8192.length).fill(false),
+				true,
+				false,
+				true,
+			];
+			compareInterpreters("SBRK 2pages", buildProgram(code, mask), 100);
+		});
+	});
+
+	// ===== DYNAMIC JUMP EDGE CASES =====
+
+	describe("dynamic jump edge cases", () => {
+		it("LOAD_IMM_JUMP_IND: address=0 -> PANIC", () => {
+			const code = [
+				Instruction.LOAD_IMM_JUMP_IND,
+				0x10,
+				0x01,
+				42,
+				0x00,
+				Instruction.TRAP,
+			];
+			const mask = [true, false, false, false, false, true];
+			const program = buildProgram(code, mask, [5], 1);
+			compareInterpreters("LIJI panic0", program, 100, (r) => setReg(r, 1, 0n));
+		});
+
+		it("LOAD_IMM_JUMP_IND: odd address -> PANIC", () => {
+			const code = [
+				Instruction.LOAD_IMM_JUMP_IND,
+				0x10,
+				0x01,
+				42,
+				0x00,
+				Instruction.TRAP,
+			];
+			const mask = [true, false, false, false, false, true];
+			const program = buildProgram(code, mask, [5], 1);
+			compareInterpreters("LIJI odd", program, 100, (r) => setReg(r, 1, 3n));
+		});
+
+		it("LOAD_IMM_JUMP_IND: out of range -> PANIC", () => {
+			const code = [
+				Instruction.LOAD_IMM_JUMP_IND,
+				0x10,
+				0x01,
+				42,
+				0x00,
+				Instruction.TRAP,
+			];
+			const mask = [true, false, false, false, false, true];
+			const program = buildProgram(code, mask, [5], 1);
+			compareInterpreters("LIJI oor", program, 100, (r) => setReg(r, 1, 100n));
+		});
+	});
+
+	// ===== SHIFT IMMEDIATE RESULT OVERFLOW =====
+
+	describe("shift immediate result overflow", () => {
+		it("SHLO_L_IMM_32: result overflow (0xa0000000 << 3 = 0)", () => {
+			const { code, mask } = twoRegImmProgram(
+				Instruction.SHLO_L_IMM_32,
+				12,
+				0,
+				immLE(3, 4),
+			);
+			compareInterpreters(
+				"SLL_IMM32 resov",
+				buildProgram(code, mask),
+				100,
+				(r) => setReg(r, 0, 0xa0000000n),
+			);
+		});
+		it("SHLO_L_IMM_64: result overflow (0xa0000000 << 35)", () => {
+			const { code, mask } = twoRegImmProgram(
+				Instruction.SHLO_L_IMM_64,
+				12,
+				0,
+				immLE(35, 4),
+			);
+			compareInterpreters(
+				"SLL_IMM64 resov",
+				buildProgram(code, mask),
+				100,
+				(r) => setReg(r, 0, 0xa0000000n),
+			);
+		});
+	});
+
+	// ===== LOAD_IMM EDGE CASES =====
+
+	describe("load_imm edge cases", () => {
+		it("LOAD_IMM: max positive 32-bit (0x7FFFFFFF)", () => {
+			const imm = immLE(0x7fffffff, 4);
+			const code = [Instruction.LOAD_IMM, 0x00, ...imm, Instruction.TRAP];
+			const mask = [true, ...Array(1 + imm.length).fill(false), true];
+			compareInterpreters("LOAD_IMM maxpos", buildProgram(code, mask), 100);
+		});
+		it("LOAD_IMM: min negative 32-bit (0x80000000 = -2^31)", () => {
+			const imm = immLE(-2147483648 | 0, 4);
+			const code = [Instruction.LOAD_IMM, 0x00, ...imm, Instruction.TRAP];
+			const mask = [true, ...Array(1 + imm.length).fill(false), true];
+			compareInterpreters("LOAD_IMM minneg", buildProgram(code, mask), 100);
+		});
+		it("LOAD_IMM: 2-byte positive (256)", () => {
+			const code = [Instruction.LOAD_IMM, 0x00, 0x00, 0x01, Instruction.TRAP];
+			const mask = [true, false, false, false, true];
+			compareInterpreters("LOAD_IMM 256", buildProgram(code, mask), 100);
+		});
+		it("LOAD_IMM: 2-byte negative (0xFF80 = -128)", () => {
+			const code = [Instruction.LOAD_IMM, 0x00, 0x80, 0xff, Instruction.TRAP];
+			const mask = [true, false, false, false, true];
+			compareInterpreters("LOAD_IMM -128", buildProgram(code, mask), 100);
+		});
+	});
+
+	// ===== BITWISE IMM WITH NEGATIVE IMMEDIATE =====
+
+	describe("bitwise imm negative immediate", () => {
+		it("AND_IMM: reg & (-1) = reg (all bits set)", () => {
+			const { code, mask } = twoRegImmProgram(
+				Instruction.AND_IMM,
+				12,
+				0,
+				immLE(-1, 4),
+			);
+			compareInterpreters("AND_IMM neg1", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 0x123456789abcdef0n),
+			);
+		});
+		it("OR_IMM: reg | (-1) = all ones", () => {
+			const { code, mask } = twoRegImmProgram(
+				Instruction.OR_IMM,
+				12,
+				0,
+				immLE(-1, 4),
+			);
+			compareInterpreters("OR_IMM neg1", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 0x123456789abcdef0n),
+			);
+		});
+		it("XOR_IMM: reg ^ (-1) = bitwise NOT", () => {
+			const { code, mask } = twoRegImmProgram(
+				Instruction.XOR_IMM,
+				12,
+				0,
+				immLE(-1, 4),
+			);
+			compareInterpreters("XOR_IMM neg1", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 0x123456789abcdef0n),
+			);
+		});
+	});
+
+	// ===== TWO_REGISTERS: source == dest =====
+
+	describe("two_registers same source and dest", () => {
+		it("MOVE_REG: r0 -> r0 (self-copy)", () => {
+			const { code, mask } = twoRegProgram(Instruction.MOVE_REG, 0, 0);
+			compareInterpreters("MOVE self", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 42n),
+			);
+		});
+		it("COUNT_SET_BITS_64: source=dest=r0", () => {
+			const { code, mask } = twoRegProgram(Instruction.COUNT_SET_BITS_64, 0, 0);
+			compareInterpreters("CSB64 self", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 0b101n),
+			);
+		});
+		it("SIGN_EXTEND_8: source=dest=r0", () => {
+			const { code, mask } = twoRegProgram(Instruction.SIGN_EXTEND_8, 0, 0);
+			compareInterpreters("SE8 self", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 0x80n),
+			);
+		});
+		it("REVERSE_BYTES: source=dest=r0", () => {
+			const { code, mask } = twoRegProgram(Instruction.REVERSE_BYTES, 0, 0);
+			compareInterpreters("RB self", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 0x0102030405060708n),
+			);
+		});
+	});
+
+	// ===== BRANCH BACKWARD JUMP =====
+
+	describe("backward jumps", () => {
+		it("JUMP backward: loop once then trap", () => {
+			// r0=counter, r1=1
+			// PC 0: BRANCH_EQ_IMM r0, 0 -> goto PC 7 (TRAP)
+			// PC 4: LOAD_IMM r0=0
+			// PC 7: TRAP
+			// But simpler: use JUMP backward only if we set up a counter
+			// Simplest: FALLTHROUGH, FALLTHROUGH, JUMP to PC 2, TRAP
+			// PC 0: FALLTHROUGH
+			// PC 1: FALLTHROUGH
+			// PC 2: JUMP offset=2 (to PC 2+2=4 = TRAP)
+			// PC 4: TRAP
+			const code = [
+				Instruction.FALLTHROUGH,
+				Instruction.FALLTHROUGH,
+				Instruction.JUMP,
+				4, // target = pc + offset = 2 + 2 = 4
+				Instruction.TRAP,
+			];
+			const mask = [true, true, true, false, true];
+			compareInterpreters("JUMP forward", buildProgram(code, mask), 100);
+		});
+	});
+
+	// ===== 64-BIT SHIFT ALT OVERFLOW =====
+
+	describe("shift alt 64-bit overflow", () => {
+		it("SHLO_L_IMM_ALT_64: result overflow (reg=35, imm=0xa0000000)", () => {
+			const { code, mask } = twoRegImmProgram(
+				Instruction.SHLO_L_IMM_ALT_64,
+				12,
+				0,
+				immLE(0xa0000000 | 0, 4),
+			);
+			compareInterpreters(
+				"SLL_ALT64 resov",
+				buildProgram(code, mask),
+				100,
+				(r) => setReg(r, 0, 35n),
+			);
+		});
+		it("SHLO_R_IMM_ALT_64: negative imm (reg=3, imm=-8)", () => {
+			const { code, mask } = twoRegImmProgram(
+				Instruction.SHLO_R_IMM_ALT_64,
+				12,
+				0,
+				immLE(-8, 4),
+			);
+			compareInterpreters("SRL_ALT64 neg", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 3n),
+			);
+		});
+		it("SHAR_R_IMM_ALT_64: negative imm (reg=3, imm=-8)", () => {
+			const { code, mask } = twoRegImmProgram(
+				Instruction.SHAR_R_IMM_ALT_64,
+				12,
+				0,
+				immLE(-8, 4),
+			);
+			compareInterpreters("SAR_ALT64 neg", buildProgram(code, mask), 100, (r) =>
+				setReg(r, 0, 3n),
 			);
 		});
 	});

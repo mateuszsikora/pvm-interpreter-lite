@@ -45,6 +45,20 @@ describe("FastGasCounter", () => {
 		assert.equal(Number(gc.used()), 3);
 	});
 
+	it("used: returns initialGas (not more) after OOG via subOne", () => {
+		const gc = new FastGasCounter(tryAsGas(2));
+		gc.subOne(); // counter=1
+		gc.subOne(); // counter=0
+		gc.subOne(); // OOG, counter was -1 internally
+		assert.equal(Number(gc.used()), 2); // must be 2, not 3
+	});
+
+	it("used: returns initialGas after OOG via sub", () => {
+		const gc = new FastGasCounter(tryAsGas(5));
+		gc.sub(tryAsGas(10)); // OOG
+		assert.equal(Number(gc.used()), 5);
+	});
+
 	it("sub: subtracts bulk gas", () => {
 		const gc = new FastGasCounter(tryAsGas(10));
 		assert.equal(gc.sub(tryAsGas(5)), false);

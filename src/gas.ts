@@ -57,7 +57,8 @@ export class FastGasCounter implements IGasCounter {
 	}
 
 	used(): Gas {
-		return tryAsGas(Number(this.initialGas) - this.counter);
+		const counter = this.counter < 0 ? 0 : this.counter;
+		return tryAsGas(Number(this.initialGas) - counter);
 	}
 }
 
