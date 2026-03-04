@@ -12,7 +12,7 @@ import { Memory } from "./memory.js";
 import { Page, PageAccess } from "./page.js";
 import { DecodeBufs, decodeProgram } from "./program.js";
 import { Registers } from "./registers.js";
-import { decodeSpi } from "./spi-decoder.js";
+import { decodeSpi, extractCodeAndMetadata } from "./spi-decoder.js";
 import {
 	EXIT_HALT,
 	type InstructionHandler,
@@ -70,9 +70,10 @@ export class Interpreter implements IPvmInterpreter {
 		args: Uint8Array,
 		pc: number,
 		gas: Gas,
-		_hasMetadata = true,
+		hasMetadata = true,
 	): void {
-		const spiData = decodeSpi(spi, args);
+		const spiBlob = hasMetadata ? extractCodeAndMetadata(spi).code : spi;
+		const spiData = decodeSpi(spiBlob, args);
 
 		const prog = decodeProgram(spiData.code);
 		this.code = prog.code;

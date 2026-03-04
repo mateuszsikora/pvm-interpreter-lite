@@ -32,6 +32,13 @@ function alignToSegmentSize(size: number): number {
 	return Math.ceil(size / SEGMENT_SIZE) * SEGMENT_SIZE;
 }
 
+export function extractCodeAndMetadata(blobWithMetadata: Uint8Array) {
+	const decoder = Decoder.fromBlob(blobWithMetadata);
+	const metadata = decoder.bytesBlob().raw;
+	const code = decoder.remainingBytes().raw;
+	return { metadata, code };
+}
+
 export function decodeSpi(spi: Uint8Array, args: Uint8Array): SpiDecodeResult {
 	const decoder = Decoder.fromBlob(spi);
 
