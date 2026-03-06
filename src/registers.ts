@@ -1,5 +1,3 @@
-import type { IRegisters } from "@typeberry/lib/pvm-interface";
-
 const NO_OF_REGISTERS = 13;
 const REGISTER_BYTE_SIZE = 8;
 
@@ -11,7 +9,7 @@ const TOTAL_BYTES = NO_OF_REGISTERS * REGISTER_BYTE_SIZE; // 13 * 8 = 104
  * Key optimization: setU32 does sign extension to 64 bits WITHOUT BigInt.
  * Writing to Int32Array (value + sign fill) is visible through BigUint64Array overlay.
  */
-export class Registers implements IRegisters {
+export class Registers {
 	private readonly buf: ArrayBuffer;
 	readonly u64: BigUint64Array;
 	readonly i64: BigInt64Array;
@@ -84,11 +82,6 @@ export class Registers implements IRegisters {
 
 	reset(): void {
 		this.bytes.fill(0);
-	}
-
-	copyFromOld(regs: IRegisters): void {
-		const encoded = regs.getAllEncoded();
-		this.bytes.set(encoded);
 	}
 
 	copyFrom(other: Registers): void {

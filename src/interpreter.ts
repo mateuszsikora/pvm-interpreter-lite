@@ -1,16 +1,9 @@
-import { tryAsU32, type U32 } from "@typeberry/lib/numbers";
-import {
-	type Gas,
-	type IGasCounter,
-	type IPvmInterpreter,
-	Status,
-	tryAsGas,
-} from "@typeberry/lib/pvm-interface";
 import { buildDispatchTable } from "./dispatch-table.js";
 import { createGasCounter } from "./gas.js";
 import { Memory } from "./memory.js";
 import { Page, PageAccess } from "./page.js";
 import { DecodeBufs, decodeProgram } from "./program.js";
+import { type Gas, type IGasCounter, Status, tryAsGas } from "./pvm-types.js";
 import { Registers } from "./registers.js";
 import { decodeSpi, extractCodeAndMetadata } from "./spi-decoder.js";
 import {
@@ -33,7 +26,7 @@ export interface InterpreterOptions {
 	debuggerMode?: boolean;
 }
 
-export class Interpreter implements IPvmInterpreter {
+export class Interpreter {
 	// ---- public (interface) ----
 	readonly registers = new Registers();
 	readonly memory = new Memory();
@@ -266,8 +259,8 @@ export class Interpreter implements IPvmInterpreter {
 		return this.status;
 	}
 
-	getExitParam(): U32 | null {
-		return this.exitParam !== null ? tryAsU32(this.exitParam) : null;
+	getExitParam(): number | null {
+		return this.exitParam;
 	}
 
 	getMemoryPage(pageNumber: number): Uint8Array | null {

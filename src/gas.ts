@@ -1,8 +1,4 @@
-import {
-	type Gas,
-	type IGasCounter,
-	tryAsGas,
-} from "@typeberry/lib/pvm-interface";
+import { type Gas, type IGasCounter, tryAsGas } from "./pvm-types.js";
 
 const MAX_SAFE_INTEGER_BIGINT = BigInt(Number.MAX_SAFE_INTEGER);
 

@@ -1,11 +1,7 @@
-import { tryAsU32, type U32 } from "@typeberry/lib/numbers";
-import type { IMemory, PageFault } from "@typeberry/lib/pvm-interface";
-
-const MAX_MEMORY_INDEX = 0xffffffff;
-
-import { OK, Result } from "@typeberry/lib/utils";
 import { BufferPool } from "./buffer-pool.js";
 import { Page, PageAccess } from "./page.js";
+
+const MAX_MEMORY_INDEX = 0xffffffff;
 
 const PAGE_SIZE = 4096;
 const PAGE_SIZE_SHIFT = 12;
@@ -14,14 +10,12 @@ const RESERVED_NUMBER_OF_PAGES = 16;
 /**
  * High-performance page-based memory.
  *
- * Optimizations:
- * - Single Page class (monomorphic V8 hidden class)
- * - Page cache for last-accessed page (eliminates Map.get for repeated access)
- * - BufferPool for writeable page buffer recycling
- * - Numeric return codes instead of Result<OK, PageFault> on hot path
- * - Bitwise page number / offset computation
+ * Uses numeric return codes for load/store operations:
+ * - `0` = success
+ * - `1` = page fault (unmapped page)
+ * - `2` = access fault (e.g. write to read-only page, or access to reserved page)
  */
-export class Memory implements IMemory {
+export class Memory {
 	private pages = new Map<number, Page>();
 	readonly bufferPool = new BufferPool();
 
@@ -34,37 +28,10 @@ export class Memory implements IMemory {
 	private cachedPageNum = -1;
 	private cachedPage: Page | null = null;
 
-	// ---- IMemory interface (used by host calls) ----
-
-	store(address: U32, bytes: Uint8Array): Result<OK, PageFault> {
-		const result = this.fastStore(address as number, bytes);
-		if (result === 0) {
-			return Result.ok(OK);
-		}
-		const addr = tryAsU32((address as number) >>> 0);
-		return Result.error(
-			{ address: addr },
-			() => `Page fault at address ${addr}`,
-		);
-	}
-
-	read(address: U32, output: Uint8Array): Result<OK, PageFault> {
-		const result = this.fastLoad(output, address as number);
-		if (result === 0) {
-			return Result.ok(OK);
-		}
-		const addr = tryAsU32((address as number) >>> 0);
-		return Result.error(
-			{ address: addr },
-			() => `Page fault at address ${addr}`,
-		);
-	}
-
-	// ---- fast path for interpreter handlers: returns 0=ok, 1=fault, 2=access_fault ----
-
 	/**
-	 * Load bytes from memory into result buffer.
-	 * Returns: 0 = success, 1 = page fault (unmapped), 2 = access fault (shouldn't happen for read)
+	 * Load bytes from memory at `address` into `result` buffer.
+	 *
+	 * @returns `0` success, `1` page fault (unmapped), `2` access fault (reserved page)
 	 */
 	fastLoad(result: Uint8Array, address: number): number {
 		const len = result.length;
@@ -97,8 +64,9 @@ export class Memory implements IMemory {
 	}
 
 	/**
-	 * Store bytes from source buffer into memory.
-	 * Returns: 0 = success, 1 = page fault, 2 = access fault (write to read-only)
+	 * Store `bytes` into memory at `address`.
+	 *
+	 * @returns `0` success, `1` page fault (unmapped), `2` access fault (write to read-only or reserved page)
 	 */
 	fastStore(address: number, bytes: Uint8Array): number {
 		const len = bytes.length;
