@@ -1,46 +1,19 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { Decoder } from "@typeberry/lib/codec";
+import { Decoder, Encoder } from "@typeberry/lib/codec";
 import { decodeProgram, readVarU32 } from "./program.js";
 import { extractCodeAndMetadata } from "./spi-decoder.js";
+
+/** Encode a varU32 using the canonical typeberry Encoder. */
+function encodeVarU32(value: number): Uint8Array {
+	const encoder = Encoder.create();
+	encoder.varU32(value);
+	return new Uint8Array(encoder.viewResult().raw);
+}
 
 // ===== readVarU32 =====
 
 describe("readVarU32", () => {
-	/** Encode a varU32 using the typeberry Decoder as reference oracle. */
-	function encodeVarU32(value: number): Uint8Array {
-		// Reverse-engineer: encode manually per the JAM spec
-		if (value < 0x80) {
-			return new Uint8Array([value]);
-		}
-		if (value < 1 << 14) {
-			const hi = (value >> 8) | 0x80;
-			const lo = value & 0xff;
-			return new Uint8Array([hi, lo]);
-		}
-		if (value < 1 << 21) {
-			const hi = (value >> 16) | 0xc0;
-			const b1 = value & 0xff;
-			const b2 = (value >> 8) & 0xff;
-			return new Uint8Array([hi, b1, b2]);
-		}
-		if (value < 1 << 28) {
-			const hi = (value >> 24) | 0xe0;
-			const b1 = value & 0xff;
-			const b2 = (value >> 8) & 0xff;
-			const b3 = (value >> 16) & 0xff;
-			return new Uint8Array([hi, b1, b2, b3]);
-		}
-		// 5 bytes: 0xf0 prefix + 4 bytes LE
-		const buf = new Uint8Array(5);
-		buf[0] = 0xf0;
-		buf[1] = value & 0xff;
-		buf[2] = (value >> 8) & 0xff;
-		buf[3] = (value >> 16) & 0xff;
-		buf[4] = (value >>> 24) & 0xff;
-		return buf;
-	}
-
 	/** Decode with typeberry Decoder as reference. */
 	function referenceVarU32(data: Uint8Array): number {
 		return Decoder.fromBlob(data).varU32() as number;
@@ -171,28 +144,7 @@ describe("decodeProgram", () => {
 	}
 
 	function pushVarU32(out: number[], value: number) {
-		if (value < 0x80) {
-			out.push(value);
-		} else if (value < 1 << 14) {
-			out.push((value >> 8) | 0x80, value & 0xff);
-		} else if (value < 1 << 21) {
-			out.push((value >> 16) | 0xc0, value & 0xff, (value >> 8) & 0xff);
-		} else if (value < 1 << 28) {
-			out.push(
-				(value >> 24) | 0xe0,
-				value & 0xff,
-				(value >> 8) & 0xff,
-				(value >> 16) & 0xff,
-			);
-		} else {
-			out.push(
-				0xf0,
-				value & 0xff,
-				(value >> 8) & 0xff,
-				(value >> 16) & 0xff,
-				(value >>> 24) & 0xff,
-			);
-		}
+		out.push(...encodeVarU32(value));
 	}
 
 	it("decodes a simple program with no jump table", () => {
@@ -253,13 +205,7 @@ describe("extractCodeAndMetadata", () => {
 	/** Build a blob with varU32-prefixed metadata + trailing code. */
 	function buildBlob(metadata: number[], code: number[]) {
 		const parts: number[] = [];
-		// varU32 length of metadata
-		if (metadata.length < 0x80) {
-			parts.push(metadata.length);
-		} else {
-			// just use 2-byte encoding for test
-			parts.push((metadata.length >> 8) | 0x80, metadata.length & 0xff);
-		}
+		parts.push(...encodeVarU32(metadata.length));
 		for (const b of metadata) parts.push(b);
 		for (const b of code) parts.push(b);
 		return new Uint8Array(parts);

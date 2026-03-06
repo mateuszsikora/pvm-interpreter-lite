@@ -35,12 +35,23 @@ function alignToSegmentSize(size: number): number {
 export function extractCodeAndMetadata(blobWithMetadata: Uint8Array) {
 	const off: [number] = [0];
 	const metadataLen = readVarU32(blobWithMetadata, off);
+	if (off[0] + metadataLen > blobWithMetadata.length) {
+		throw new Error(
+			`Malformed blob: metadata length ${metadataLen} exceeds available data (${blobWithMetadata.length - off[0]} bytes remaining)`,
+		);
+	}
 	const metadata = blobWithMetadata.subarray(off[0], off[0] + metadataLen);
 	const code = blobWithMetadata.subarray(off[0] + metadataLen);
 	return { metadata, code };
 }
 
 export function decodeSpi(spi: Uint8Array, args: Uint8Array): SpiDecodeResult {
+	// Fixed header: 3 (oLength) + 3 (wLength) + 2 (heapZeros) + 3 (stackSize) = 11 bytes
+	if (spi.length < 11) {
+		throw new Error(
+			`SPI input too short: need at least 11 header bytes, have ${spi.length}`,
+		);
+	}
 	const dv = new DataView(spi.buffer, spi.byteOffset, spi.byteLength);
 	let off = 0;
 
@@ -73,6 +84,11 @@ export function decodeSpi(spi: Uint8Array, args: Uint8Array): SpiDecodeResult {
 	const stackSize = spi[off] | (dv.getUint16(off + 1, true) << 8);
 	off += 3;
 
+	if (off + readOnlyLength + heapLength + 4 > spi.length) {
+		throw new Error(
+			`SPI input truncated: need ${off + readOnlyLength + heapLength + 4} bytes, have ${spi.length}`,
+		);
+	}
 	const readOnlyMemory = spi.subarray(off, off + readOnlyLength);
 	off += readOnlyLength;
 	const initialHeap = spi.subarray(off, off + heapLength);
@@ -80,6 +96,11 @@ export function decodeSpi(spi: Uint8Array, args: Uint8Array): SpiDecodeResult {
 
 	const codeLength = dv.getUint32(off, true);
 	off += 4;
+	if (off + codeLength > spi.length) {
+		throw new Error(
+			`SPI input truncated: need ${off + codeLength} bytes for code, have ${spi.length}`,
+		);
+	}
 	const code = spi.subarray(off, off + codeLength);
 	off += codeLength;
 

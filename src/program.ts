@@ -32,24 +32,39 @@ terminationOpcodes[Instruction.BRANCH_GT_S_IMM] = 1;
  * Advances `off[0]` past the consumed bytes. Returns the decoded value.
  */
 export function readVarU32(src: Uint8Array, off: [number]): number {
+	if (off[0] >= src.length) {
+		throw new RangeError("readVarU32: unexpected end of input");
+	}
 	const first = src[off[0]++];
 	if (first < 0x80) return first;
 	if (first < 0xc0) {
+		if (off[0] >= src.length) {
+			throw new RangeError("readVarU32: unexpected end of input");
+		}
 		const v = ((first & 0x3f) << 8) | src[off[0]];
 		off[0] += 1;
 		return v;
 	}
 	if (first < 0xe0) {
+		if (off[0] + 2 > src.length) {
+			throw new RangeError("readVarU32: unexpected end of input");
+		}
 		const o = off[0];
 		off[0] += 2;
 		return ((first & 0x1f) << 16) | (src[o + 1] << 8) | src[o];
 	}
 	if (first < 0xf0) {
+		if (off[0] + 3 > src.length) {
+			throw new RangeError("readVarU32: unexpected end of input");
+		}
 		const o = off[0];
 		off[0] += 3;
 		return (
 			((first & 0x0f) << 24) | (src[o + 2] << 16) | (src[o + 1] << 8) | src[o]
 		);
+	}
+	if (off[0] + 4 > src.length) {
+		throw new RangeError("readVarU32: unexpected end of input");
 	}
 	const o = off[0];
 	off[0] += 4;
@@ -104,6 +119,14 @@ export function decodeProgram(
 	const off: [number] = [0];
 	const jumpTableLength = readVarU32(rawProgram, off);
 	const jumpTableItemLength = rawProgram[off[0]++];
+	if (
+		jumpTableItemLength > 4 ||
+		(jumpTableLength > 0 && jumpTableItemLength < 1)
+	) {
+		throw new Error(
+			`Invalid jump table item length: ${jumpTableItemLength} (expected 1..4)`,
+		);
+	}
 	const codeLength = readVarU32(rawProgram, off);
 
 	const jumpTableLengthInBytes = jumpTableLength * jumpTableItemLength;
