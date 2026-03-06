@@ -3,7 +3,7 @@ import { createGasCounter } from "./gas.js";
 import { Memory } from "./memory.js";
 import { Page, PageAccess } from "./page.js";
 import { DecodeBufs, decodeProgram } from "./program.js";
-import { type Gas, type IGasCounter, Status, tryAsGas } from "./pvm-types.js";
+import { type Gas, type IGasCounter, Status } from "./pvm-types.js";
 import { Registers } from "./registers.js";
 import { decodeSpi, extractCodeAndMetadata } from "./spi-decoder.js";
 import {
@@ -30,7 +30,7 @@ export class Interpreter {
 	// ---- public (interface) ----
 	readonly registers = new Registers();
 	readonly memory = new Memory();
-	gas: IGasCounter = createGasCounter(tryAsGas(0));
+	gas: IGasCounter = createGasCounter(0);
 
 	// ---- internal state ----
 	private code: Uint8Array = new Uint8Array(0);

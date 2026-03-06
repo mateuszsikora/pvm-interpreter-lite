@@ -1,4 +1,4 @@
-import { type Gas, type IGasCounter, tryAsGas } from "./pvm-types.js";
+import type { Gas, IGasCounter } from "./pvm-types.js";
 
 const MAX_SAFE_INTEGER_BIGINT = BigInt(Number.MAX_SAFE_INTEGER);
 
@@ -35,7 +35,7 @@ export class FastGasCounter implements IGasCounter {
 	}
 
 	get(): Gas {
-		return tryAsGas(this.counter < 0 ? 0 : this.counter);
+		return this.counter < 0 ? 0 : this.counter;
 	}
 
 	/**
@@ -54,7 +54,7 @@ export class FastGasCounter implements IGasCounter {
 
 	used(): Gas {
 		const counter = this.counter < 0 ? 0 : this.counter;
-		return tryAsGas(Number(this.initialGas) - counter);
+		return Number(this.initialGas) - counter;
 	}
 }
 
@@ -157,7 +157,7 @@ export class BigGasCounter implements IGasCounter {
 
 	get(): Gas {
 		const total = BigInt(this.counter) + this.overflow;
-		return tryAsGas(total);
+		return total;
 	}
 
 	set(g: Gas): void {
@@ -174,7 +174,7 @@ export class BigGasCounter implements IGasCounter {
 	used(): Gas {
 		const remaining = BigInt(this.counter) + this.overflow;
 		const initial = BigInt(this.initialGas);
-		return tryAsGas(initial - remaining);
+		return initial - remaining;
 	}
 }
 

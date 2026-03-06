@@ -60,7 +60,6 @@ const interpreter = new Interpreter({ debuggerMode: true });
 | `Status` | PVM execution result enum (OK, HALT, PANIC, FAULT, HOST, OOG) |
 | `Gas` | Gas type (`number \| bigint`) |
 | `IGasCounter` | Gas counter interface |
-| `tryAsGas` | Convert number/bigint to Gas |
 | `decodeSpi` | Decodes SPI program format |
 | `SpiDecodeResult` | Return type of `decodeSpi` |
 

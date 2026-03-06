@@ -19,9 +19,6 @@ export enum Status {
 /** Gas measuring type. Can be either a JS number or bigint. */
 export type Gas = number | bigint;
 
-/** Attempt to convert given number into gas. */
-export const tryAsGas = (v: number | bigint): Gas => v;
-
 /**
  * An abstraction over gas counter.
  *
