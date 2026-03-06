@@ -7,7 +7,6 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "require": "./dist/cjs/index.js",
       "default": "./dist/index.js"
     }
   },
@@ -20,19 +19,15 @@
   ],
   "scripts": {
     "test": "tsx --test $(find src -name '*.test.ts')",
-    "build": "tsc && node build-cjs.js",
+    "build": "tsc",
     "qa": "biome check src",
     "qa-fix": "biome check --write src"
-  },
-  "peerDependencies": {
-    "@typeberry/lib": "*"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.5",
     "@tsconfig/node20": "^20.1.4",
     "@typeberry/lib": "latest",
     "@types/node": "^25.3.3",
-    "esbuild": "^0.27.3",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
   }

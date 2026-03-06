@@ -1,6 +1,6 @@
 # pvm-interpreter-lite
 
-A high-performance PVM (Polka Virtual Machine) interpreter written in TypeScript.
+A high-performance, standalone PVM (Polka Virtual Machine) interpreter written in TypeScript. Zero runtime dependencies.
 
 ## Features
 
@@ -14,19 +14,16 @@ A high-performance PVM (Polka Virtual Machine) interpreter written in TypeScript
 ## Install
 
 ```bash
-npm install pvm-interpreter-lite
+npm install @fluffylabs/pvm-interpreter-lite
 ```
-
-Peer dependency: `@typeberry/lib`
 
 ## Usage
 
 ```typescript
-import { Interpreter } from "pvm-interpreter-lite";
-import { tryAsGas } from "@typeberry/lib/pvm-interface";
+import { Interpreter } from "@fluffylabs/pvm-interpreter-lite";
 
 const interpreter = new Interpreter();
-interpreter.resetGeneric(program, 0, tryAsGas(1_000_000));
+interpreter.resetGeneric(program, 0, 1_000_000);
 interpreter.runProgram();
 
 console.log(interpreter.getStatus());
@@ -36,11 +33,10 @@ console.log(interpreter.gas.get());
 ### SPI format
 
 ```typescript
-import { Interpreter, decodeSpi } from "pvm-interpreter-lite";
-import { tryAsGas } from "@typeberry/lib/pvm-interface";
+import { Interpreter } from "@fluffylabs/pvm-interpreter-lite";
 
 const interpreter = new Interpreter();
-interpreter.resetJam(spiBlob, args, 0, tryAsGas(1_000_000));
+interpreter.resetJam(spiBlob, args, 0, 1_000_000);
 interpreter.runProgram();
 ```
 
@@ -55,12 +51,15 @@ const interpreter = new Interpreter({ debuggerMode: true });
 
 | Export | Description |
 |---|---|
-| `Interpreter` | Main interpreter class implementing `IPvmInterpreter` |
+| `Interpreter` | Main interpreter class |
 | `InterpreterOptions` | Options type (`{ debuggerMode?: boolean }`) |
-| `Memory` | Page-based memory implementing `IMemory` |
-| `Registers` | Register file implementing `IRegisters` |
+| `Memory` | Page-based memory with `fastLoad`/`fastStore` |
+| `Registers` | Dual-view register file |
 | `createGasCounter` | Creates optimal gas counter for given gas value |
 | `FastGasCounter` | Number-based gas counter (gas <= MAX_SAFE_INTEGER) |
+| `Status` | PVM execution result enum (OK, HALT, PANIC, FAULT, HOST, OOG) |
+| `Gas` | Gas type (`number \| bigint`) |
+| `IGasCounter` | Gas counter interface |
 | `decodeSpi` | Decodes SPI program format |
 | `SpiDecodeResult` | Return type of `decodeSpi` |
 

@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { Status, tryAsGas } from "@typeberry/lib/pvm-interface";
+import { tryAsGas as tryAsGasOld } from "@typeberry/lib/pvm-interface";
 import { Interpreter as OldInterpreter } from "@typeberry/lib/pvm-interpreter";
 import { Instruction } from "./instruction.js";
 import { Interpreter as LiteInterpreter } from "./interpreter.js";
+import { Status } from "./pvm-types.js";
 
 /**
  * Helper to build a raw PVM program blob from code bytes and mask.
@@ -83,8 +84,8 @@ function compareInterpreters(
 	const oldInterpreter = new OldInterpreter();
 	const liteInterpreter = new LiteInterpreter();
 
-	oldInterpreter.resetGeneric(program, 0, tryAsGas(gas));
-	liteInterpreter.resetGeneric(program, 0, tryAsGas(gas));
+	oldInterpreter.resetGeneric(program, 0, tryAsGasOld(gas));
+	liteInterpreter.resetGeneric(program, 0, gas);
 
 	if (setupRegisters !== undefined) {
 		const regBytes = new Uint8Array(13 * 8);
@@ -1987,8 +1988,8 @@ describe("pvm-interpreter-lite vs pvm-interpreter", () => {
 			const oldInterpreter = new OldInterpreter();
 			const liteInterpreter = new LiteInterpreter();
 
-			oldInterpreter.resetGeneric(program, 0, tryAsGas(100));
-			liteInterpreter.resetGeneric(program, 0, tryAsGas(100));
+			oldInterpreter.resetGeneric(program, 0, tryAsGasOld(100));
+			liteInterpreter.resetGeneric(program, 0, 100);
 
 			oldInterpreter.runProgram();
 			liteInterpreter.runProgram();
@@ -2009,8 +2010,8 @@ describe("pvm-interpreter-lite vs pvm-interpreter", () => {
 			const oldInterpreter = new OldInterpreter();
 			const liteInterpreter = new LiteInterpreter();
 
-			oldInterpreter.resetGeneric(program, 0, tryAsGas(100));
-			liteInterpreter.resetGeneric(program, 0, tryAsGas(100));
+			oldInterpreter.resetGeneric(program, 0, tryAsGasOld(100));
+			liteInterpreter.resetGeneric(program, 0, 100);
 
 			oldInterpreter.runProgram();
 			liteInterpreter.runProgram();
@@ -2032,8 +2033,8 @@ describe("pvm-interpreter-lite vs pvm-interpreter", () => {
 			const oldInterpreter = new OldInterpreter();
 			const liteInterpreter = new LiteInterpreter();
 
-			oldInterpreter.resetGeneric(program, 0, tryAsGas(100));
-			liteInterpreter.resetGeneric(program, 0, tryAsGas(100));
+			oldInterpreter.resetGeneric(program, 0, tryAsGasOld(100));
+			liteInterpreter.resetGeneric(program, 0, 100);
 
 			// First run: should stop at HOST
 			oldInterpreter.runProgram();

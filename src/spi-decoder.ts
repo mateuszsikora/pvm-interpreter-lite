@@ -1,4 +1,4 @@
-import { Decoder } from "@typeberry/lib/codec";
+import { readVarU32 } from "./program.js";
 
 const PAGE_SIZE = 4096;
 const SEGMENT_SIZE = 65536; // 0x10000
@@ -33,17 +33,33 @@ function alignToSegmentSize(size: number): number {
 }
 
 export function extractCodeAndMetadata(blobWithMetadata: Uint8Array) {
-	const decoder = Decoder.fromBlob(blobWithMetadata);
-	const metadata = decoder.bytesBlob().raw;
-	const code = decoder.remainingBytes().raw;
+	const off: [number] = [0];
+	const metadataLen = readVarU32(blobWithMetadata, off);
+	if (off[0] + metadataLen > blobWithMetadata.length) {
+		throw new Error(
+			`Malformed blob: metadata length ${metadataLen} exceeds available data (${blobWithMetadata.length - off[0]} bytes remaining)`,
+		);
+	}
+	const metadata = blobWithMetadata.subarray(off[0], off[0] + metadataLen);
+	const code = blobWithMetadata.subarray(off[0] + metadataLen);
 	return { metadata, code };
 }
 
 export function decodeSpi(spi: Uint8Array, args: Uint8Array): SpiDecodeResult {
-	const decoder = Decoder.fromBlob(spi);
+	// Fixed header: 3 (oLength) + 3 (wLength) + 2 (heapZeros) + 3 (stackSize) = 11 bytes
+	if (spi.length < 11) {
+		throw new Error(
+			`SPI input too short: need at least 11 header bytes, have ${spi.length}`,
+		);
+	}
+	const dv = new DataView(spi.buffer, spi.byteOffset, spi.byteLength);
+	let off = 0;
 
-	const oLength = decoder.u24();
-	const wLength = decoder.u24();
+	// u24 LE
+	const oLength = spi[off] | (dv.getUint16(off + 1, true) << 8);
+	off += 3;
+	const wLength = spi[off] | (dv.getUint16(off + 1, true) << 8);
+	off += 3;
 
 	if (args.length > DATA_LENGTH) {
 		throw new Error(
@@ -62,13 +78,37 @@ export function decodeSpi(spi: Uint8Array, args: Uint8Array): SpiDecodeResult {
 		);
 	}
 	const heapLength = wLength;
-	const noOfHeapZerosPages = decoder.u16();
-	const stackSize = decoder.u24();
-	const readOnlyMemory = decoder.bytes(readOnlyLength).raw;
-	const initialHeap = decoder.bytes(heapLength).raw;
-	const codeLength = decoder.u32();
-	const code = decoder.bytes(codeLength).raw;
-	decoder.finish();
+
+	const noOfHeapZerosPages = dv.getUint16(off, true);
+	off += 2;
+	const stackSize = spi[off] | (dv.getUint16(off + 1, true) << 8);
+	off += 3;
+
+	if (off + readOnlyLength + heapLength + 4 > spi.length) {
+		throw new Error(
+			`SPI input truncated: need ${off + readOnlyLength + heapLength + 4} bytes, have ${spi.length}`,
+		);
+	}
+	const readOnlyMemory = spi.subarray(off, off + readOnlyLength);
+	off += readOnlyLength;
+	const initialHeap = spi.subarray(off, off + heapLength);
+	off += heapLength;
+
+	const codeLength = dv.getUint32(off, true);
+	off += 4;
+	if (off + codeLength > spi.length) {
+		throw new Error(
+			`SPI input truncated: need ${off + codeLength} bytes for code, have ${spi.length}`,
+		);
+	}
+	const code = spi.subarray(off, off + codeLength);
+	off += codeLength;
+
+	if (off !== spi.length) {
+		throw new Error(
+			`Expecting end of input, yet there are still ${spi.length - off} bytes left.`,
+		);
+	}
 
 	const readonlyDataStart = SEGMENT_SIZE;
 	const readonlyDataEnd = SEGMENT_SIZE + alignToPageSize(readOnlyLength);
